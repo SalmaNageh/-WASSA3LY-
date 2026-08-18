@@ -1,0 +1,90 @@
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean
+from sqlalchemy.orm import declarative_base
+from datetime import datetime
+
+Base = declarative_base()
+
+
+# =========================
+# Vehicle Table
+# =========================
+class Vehicle(Base):
+    __tablename__ = "vehicles"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # ID coming from Member 2 tracking module
+    vehicle_id = Column(Integer, unique=True, nullable=False)
+
+    # License plate detected by OCR
+    plate_number = Column(String, nullable=True)
+
+    # OCR confidence
+    plate_confidence = Column(Float, nullable=True)
+
+    # Example: confirmed / needs_review
+    plate_status = Column(String, default="needs_review")
+
+
+# =========================
+# Parking Space Table
+# =========================
+class ParkingSpace(Base):
+    __tablename__ = "parking_spaces"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Space number: 1, 2, 3, ...
+    space_number = Column(Integer, unique=True, nullable=False)
+
+    # Available / Occupied
+    status = Column(String, default="available")
+
+    # Optional: vehicle currently occupying the space
+    vehicle_id = Column(Integer, nullable=True)
+
+
+# =========================
+# Parking Session Table
+# =========================
+class ParkingSession(Base):
+    __tablename__ = "parking_sessions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Vehicle tracking ID
+    vehicle_id = Column(Integer, nullable=False)
+
+    # Plate detected during this session
+    plate_number = Column(String, nullable=True)
+
+    # Entry and exit times
+    entry_time = Column(DateTime, nullable=False)
+    exit_time = Column(DateTime, nullable=True)
+
+    # Parking duration in minutes
+    duration_minutes = Column(Float, nullable=True)
+
+    # Parking fee
+    fee = Column(Float, default=0.0)
+
+    # active / completed
+    status = Column(String, default="active")
+
+
+# =========================
+# VIP Table
+# =========================
+class VIP(Base):
+    __tablename__ = "vip"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # VIP license plate
+    plate_number = Column(String, unique=True, nullable=False)
+
+    # Optional VIP name
+    name = Column(String, nullable=True)
+
+    # True = VIP active
+    active = Column(Boolean, default=True)

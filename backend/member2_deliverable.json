@@ -1,0 +1,10 @@
+[
+  {
+    "vehicle_id": 36,
+    "plate_number": "8S",
+    "entry_time": "2026-08-18T15:52:39.174453",
+    "exit_time": "2026-08-18T15:52:44.614453",
+    "confidence": 0.241,
+    "status": "needs_review"
+  }
+]
