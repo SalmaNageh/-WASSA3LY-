@@ -416,7 +416,7 @@ Parking Map
 
 ### 🎥 Demo
 
-**[ADD DEMO VIDEO LINK]**
+<video src="assets/demo.mp4" controls width="800"></video>
 
 ### 📑 Presentation
 
