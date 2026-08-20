@@ -23,3 +23,8 @@ test_database.py
 # OS
 .DS_Store
 Thumbs.db
+*.db
+*.sqlite
+*.sqlite3
+.env
+.streamlit/secrets.toml

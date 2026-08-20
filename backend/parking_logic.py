@@ -1,13 +1,12 @@
 from datetime import datetime
-from database import get_connection
-
+from backend.database import get_connection
 
 # ============================================================
 # CONFIGURATION
 # ============================================================
 
 REGULAR_FEE_PER_HOUR = 20
-VIP_FEE_PER_HOUR = 0
+VIP_FEE_PER_HOUR = 40
 
 
 # ============================================================
@@ -36,80 +35,58 @@ def is_vip(plate_number):
 
 
 # ============================================================
-# ENTER
+# VEHICLE ID
 # ============================================================
 
-def start_parking_session(
-    vehicle_id,
-    plate_number,
-    parking_space
-):
-    """Start a new parking session."""
+def get_or_create_vehicle_id(plate_number):
+    """
+    Return the existing vehicle ID for a plate.
+    If the vehicle does not exist, create a new ID.
+    """
 
-    now = datetime.now().isoformat()
-
-    vip = is_vip(plate_number)
+    plate_number = str(
+        plate_number
+    ).strip().upper()
 
     with get_connection() as conn:
+
         cursor = conn.cursor()
 
         # ----------------------------------------------------
-        # Check if vehicle already has an active session
+        # Check existing vehicle
         # ----------------------------------------------------
 
         cursor.execute(
             """
-            SELECT id
-            FROM parking_sessions
+            SELECT vehicle_id
+            FROM vehicles
             WHERE plate_number = ?
-            AND exit_time IS NULL
-            AND status = 'active'
+            LIMIT 1
             """,
             (plate_number,)
         )
 
-        existing_session = cursor.fetchone()
+        vehicle = cursor.fetchone()
 
-        if existing_session:
-            return {
-                "success": False,
-                "message": "Vehicle already has an active parking session.",
-                "plate_number": plate_number
-            }
+        if vehicle:
+
+            return vehicle["vehicle_id"]
 
         # ----------------------------------------------------
-        # Check parking space
+        # Generate new vehicle ID
         # ----------------------------------------------------
 
         cursor.execute(
             """
-            SELECT id, status
-            FROM parking_spaces
-            WHERE space_number = ?
-            """,
-            (parking_space,)
+            SELECT COALESCE(MAX(vehicle_id), 0) + 1
+            FROM vehicles
+            """
         )
 
-        space = cursor.fetchone()
-
-        if not space:
-            return {
-                "success": False,
-                "message": "Parking space does not exist.",
-                "parking_space": parking_space
-            }
-
-        space_id = space["id"]
-
-        if space["status"] == "occupied":
-            return {
-                "success": False,
-                "message": "Parking space is already occupied.",
-                "parking_space": parking_space
-            }
+        vehicle_id = cursor.fetchone()[0]
 
         # ----------------------------------------------------
-        # Add / Update vehicle
+        # Create vehicle
         # ----------------------------------------------------
 
         cursor.execute(
@@ -119,9 +96,6 @@ def start_parking_session(
                 plate_number
             )
             VALUES (?, ?)
-            ON CONFLICT(vehicle_id)
-            DO UPDATE SET
-                plate_number = excluded.plate_number
             """,
             (
                 vehicle_id,
@@ -129,9 +103,151 @@ def start_parking_session(
             )
         )
 
-        # ----------------------------------------------------
-        # Create parking session
-        # ----------------------------------------------------
+    return vehicle_id
+
+
+# ============================================================
+# FIND AVAILABLE PARKING SPACE
+# ============================================================
+
+def get_available_parking_space():
+    """
+    Return the first available parking space.
+    """
+
+    with get_connection() as conn:
+
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                space_number
+            FROM parking_spaces
+            WHERE status = 'available'
+            ORDER BY id ASC
+            LIMIT 1
+            """
+        )
+
+        space = cursor.fetchone()
+
+    if not space:
+        return None
+
+    return {
+        "id": space["id"],
+        "space_number": space["space_number"]
+    }
+
+
+# ============================================================
+# ENTER
+# ============================================================
+
+def start_parking_session(plate_number):
+    """
+    Start a new parking session automatically.
+
+    Vehicle ID:
+        Automatically assigned based on license plate.
+
+    Parking Space:
+        Automatically assigned from available spaces.
+    """
+
+    plate_number = str(
+        plate_number
+    ).strip().upper()
+
+    if not plate_number:
+
+        return {
+            "success": False,
+            "message": "License plate is required."
+        }
+
+    now = datetime.now().isoformat()
+
+    vip = is_vip(
+        plate_number
+    )
+
+    # --------------------------------------------------------
+    # Check existing active session
+    # --------------------------------------------------------
+
+    with get_connection() as conn:
+
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                vehicle_id,
+                parking_space_id
+            FROM parking_sessions
+            WHERE plate_number = ?
+            AND exit_time IS NULL
+            AND status = 'active'
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (plate_number,)
+        )
+
+        existing_session = cursor.fetchone()
+
+    if existing_session:
+
+        return {
+            "success": False,
+            "message": (
+                "Vehicle already has "
+                "an active parking session."
+            ),
+            "plate_number": plate_number,
+            "vehicle_id": existing_session["vehicle_id"]
+        }
+
+    # --------------------------------------------------------
+    # Get / create vehicle ID
+    # --------------------------------------------------------
+
+    vehicle_id = get_or_create_vehicle_id(
+        plate_number
+    )
+
+    # --------------------------------------------------------
+    # Find available parking space
+    # --------------------------------------------------------
+
+    space = get_available_parking_space()
+
+    if not space:
+
+        return {
+            "success": False,
+            "message": "No available parking spaces.",
+            "plate_number": plate_number,
+            "vehicle_id": vehicle_id
+        }
+
+    space_id = space["id"]
+
+    parking_space = space[
+        "space_number"
+    ]
+
+    # --------------------------------------------------------
+    # Create session
+    # --------------------------------------------------------
+
+    with get_connection() as conn:
+
+        cursor = conn.cursor()
 
         cursor.execute(
             """
@@ -156,7 +272,7 @@ def start_parking_session(
         session_id = cursor.lastrowid
 
         # ----------------------------------------------------
-        # Mark parking space as occupied
+        # Mark space occupied
         # ----------------------------------------------------
 
         cursor.execute(
@@ -185,16 +301,23 @@ def start_parking_session(
 # ============================================================
 
 def end_parking_session(plate_number):
-    """End active parking session and calculate duration and fee."""
+    """
+    End active parking session using license plate.
+    """
+
+    plate_number = str(
+        plate_number
+    ).strip().upper()
 
     exit_time = datetime.now()
 
-    with get_connection() as conn:
-        cursor = conn.cursor()
+    # --------------------------------------------------------
+    # Find active session
+    # --------------------------------------------------------
 
-        # ----------------------------------------------------
-        # Find active session
-        # ----------------------------------------------------
+    with get_connection() as conn:
+
+        cursor = conn.cursor()
 
         cursor.execute(
             """
@@ -215,24 +338,37 @@ def end_parking_session(plate_number):
 
         session = cursor.fetchone()
 
-        if not session:
-            return {
-                "success": False,
-                "message": "No active parking session found.",
-                "plate_number": plate_number
-            }
+    if not session:
 
-        session_id = session["id"]
-        vehicle_id = session["vehicle_id"]
-        parking_space_id = session["parking_space_id"]
+        return {
+            "success": False,
+            "message": (
+                "No active parking session found."
+            ),
+            "plate_number": plate_number
+        }
 
-        entry_time = datetime.fromisoformat(
-            session["entry_time"]
-        )
+    session_id = session["id"]
 
-        # ----------------------------------------------------
-        # Get parking space number
-        # ----------------------------------------------------
+    vehicle_id = session[
+        "vehicle_id"
+    ]
+
+    parking_space_id = session[
+        "parking_space_id"
+    ]
+
+    entry_time = datetime.fromisoformat(
+        session["entry_time"]
+    )
+
+    # --------------------------------------------------------
+    # Get parking space number
+    # --------------------------------------------------------
+
+    with get_connection() as conn:
+
+        cursor = conn.cursor()
 
         cursor.execute(
             """
@@ -245,50 +381,68 @@ def end_parking_session(plate_number):
 
         space = cursor.fetchone()
 
-        if space:
-            parking_space = space["space_number"]
-        else:
-            parking_space = None
+    if space:
 
-        # ----------------------------------------------------
-        # Check VIP
-        # ----------------------------------------------------
+        parking_space = space[
+            "space_number"
+        ]
 
-        vip = is_vip(plate_number)
+    else:
 
-        # ----------------------------------------------------
-        # Calculate duration
-        # ----------------------------------------------------
+        parking_space = None
 
-        duration_seconds = (
-            exit_time - entry_time
-        ).total_seconds()
+    # --------------------------------------------------------
+    # VIP
+    # --------------------------------------------------------
 
-        duration_minutes = duration_seconds / 60
+    vip = is_vip(
+        plate_number
+    )
 
-        # ----------------------------------------------------
-        # Calculate fee
-        # ----------------------------------------------------
+    # --------------------------------------------------------
+    # Duration
+    # --------------------------------------------------------
 
-        if vip:
-            fee = VIP_FEE_PER_HOUR
+    duration_seconds = (
+        exit_time - entry_time
+    ).total_seconds()
 
-        else:
-            # Minimum one hour charge
-            hours = max(
-                1,
-                duration_seconds / 3600
-            )
+    duration_minutes = (
+        duration_seconds / 60
+    )
 
-            fee = round(
-                hours * REGULAR_FEE_PER_HOUR
-            )
+    # --------------------------------------------------------
+    # Fee
+    # --------------------------------------------------------
 
-        exit_time_str = exit_time.isoformat()
+    hours = max(
+        1,
+        duration_seconds / 3600
+    )
 
-        # ----------------------------------------------------
-        # Update parking session
-        # ----------------------------------------------------
+    if vip:
+
+        fee = round(
+            hours * VIP_FEE_PER_HOUR
+        )
+
+    else:
+
+        fee = round(
+            hours * REGULAR_FEE_PER_HOUR
+        )
+
+    exit_time_str = (
+        exit_time.isoformat()
+    )
+
+    # --------------------------------------------------------
+    # Update session
+    # --------------------------------------------------------
+
+    with get_connection() as conn:
+
+        cursor = conn.cursor()
 
         cursor.execute(
             """
@@ -346,6 +500,7 @@ def end_parking_session(plate_number):
 def get_parking_status():
 
     with get_connection() as conn:
+
         cursor = conn.cursor()
 
         cursor.execute(
@@ -370,7 +525,7 @@ def get_parking_status():
     available = total - occupied
 
     occupancy_rate = (
-        (occupied / total) * 100
+        occupied / total * 100
         if total > 0
         else 0
     )
@@ -393,6 +548,7 @@ def get_parking_status():
 def get_parking_history(limit=100):
 
     with get_connection() as conn:
+
         cursor = conn.cursor()
 
         cursor.execute(
@@ -422,19 +578,41 @@ def get_parking_history(limit=100):
 
     for row in rows:
 
-        plate_number = row["plate_number"]
+        plate_number = row[
+            "plate_number"
+        ]
 
         history.append({
-            "session_id": row["id"],
-            "vehicle_id": row["vehicle_id"],
-            "plate_number": plate_number,
-            "parking_space": row["space_number"],
-            "entry_time": row["entry_time"],
-            "exit_time": row["exit_time"],
-            "duration_minutes": row["duration_minutes"],
-            "vip": is_vip(plate_number),
-            "fee": row["fee"],
-            "status": row["status"]
+
+            "session_id":
+                row["id"],
+
+            "vehicle_id":
+                row["vehicle_id"],
+
+            "plate_number":
+                plate_number,
+
+            "parking_space":
+                row["space_number"],
+
+            "entry_time":
+                row["entry_time"],
+
+            "exit_time":
+                row["exit_time"],
+
+            "duration_minutes":
+                row["duration_minutes"],
+
+            "vip":
+                is_vip(plate_number),
+
+            "fee":
+                row["fee"],
+
+            "status":
+                row["status"]
         })
 
     return history
@@ -447,6 +625,7 @@ def get_parking_history(limit=100):
 def get_total_revenue():
 
     with get_connection() as conn:
+
         cursor = conn.cursor()
 
         cursor.execute(
@@ -463,26 +642,94 @@ def get_total_revenue():
 
 
 # ============================================================
+# SYNC PARKING OCCUPANCY
+# ============================================================
+
+def sync_parking_occupancy(occupied_spaces):
+    """
+    Synchronize parking space status with YOLO.
+    """
+
+    with get_connection() as conn:
+
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            SELECT space_number
+            FROM parking_spaces
+            """
+        )
+
+        spaces = cursor.fetchall()
+
+        for space in spaces:
+
+            space_number = space[
+                "space_number"
+            ]
+
+            if space_number in occupied_spaces:
+
+                status = "occupied"
+
+            else:
+
+                status = "available"
+
+            cursor.execute(
+                """
+                UPDATE parking_spaces
+                SET status = ?
+                WHERE space_number = ?
+                """,
+                (
+                    status,
+                    space_number
+                )
+            )
+
+
+# ============================================================
 # TEST
 # ============================================================
 
 if __name__ == "__main__":
 
-    print("\n===== PARKING STATUS =====")
+    print(
+        "\n===== PARKING STATUS ====="
+    )
 
     status = get_parking_status()
 
-    print("Total:", status["total"])
-    print("Occupied:", status["occupied"])
-    print("Available:", status["available"])
+    print(
+        "Total:",
+        status["total"]
+    )
+
+    print(
+        "Occupied:",
+        status["occupied"]
+    )
+
+    print(
+        "Available:",
+        status["available"]
+    )
+
     print(
         "Occupancy Rate:",
         status["occupancy_rate"],
         "%"
     )
 
-    print("\n===== TOTAL REVENUE =====")
+    print(
+        "\n===== TOTAL REVENUE ====="
+    )
 
     revenue = get_total_revenue()
 
-    print("Revenue:", revenue)
+    print(
+        "Revenue:",
+        revenue
+    )

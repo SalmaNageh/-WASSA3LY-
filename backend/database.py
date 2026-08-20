@@ -1,4 +1,3 @@
-# database.py
 
 import sqlite3
 from pathlib import Path
@@ -11,7 +10,7 @@ DB_PATH = Path(__file__).resolve().parent / "parking.db"
 def get_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-
+    conn.execute("PRAGMA foreign_keys = ON")
     try:
         yield conn
         conn.commit()
@@ -87,15 +86,17 @@ def add_vehicle(vehicle_id, plate_number=None, confidence=None):
                 confidence = excluded.confidence
         """, (vehicle_id, plate_number, confidence))
 
-
 def add_parking_space(space_number, coordinates, status="available"):
     with get_connection() as conn:
         conn.execute("""
-            INSERT OR REPLACE INTO parking_spaces
+            INSERT INTO parking_spaces
             (space_number, coordinates, status)
             VALUES (?, ?, ?)
+            ON CONFLICT(space_number)
+            DO UPDATE SET
+                coordinates = excluded.coordinates,
+                status = excluded.status
         """, (space_number, coordinates, status))
-
 
 def update_space_status(space_number, status):
     with get_connection() as conn:
