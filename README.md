@@ -13,20 +13,20 @@ WASSA3LY aims to make parking management smarter and more efficient by automatic
 The system combines:
 
 * 🚗 Vehicle & Parking Detection
-* 🅿️ Parking Occupancy Monitoring
-* 🔢 License Plate Recognition
-* 🔍 OCR
-* 🆔 Vehicle Identification
-* ⭐ VIP Management
-* ⏱️ Parking Duration Calculation
-* 💰 Automatic Fee Calculation
-* 📊 Parking Analytics
-* 🗄️ SQLite Database
-* 🖥️ Streamlit Dashboard
+*  Parking Occupancy Monitoring
+*  License Plate Recognition
+*  OCR
+*  Vehicle Identification
+*  VIP Management
+*  Parking Duration Calculation
+*  Automatic Fee Calculation
+*  Parking Analytics
+*  SQLite Database
+* Streamlit Dashboard
 
 ---
 
-# 🏗️ System Architecture
+# System Architecture
 
 ```text
                     📷 Image / Video
@@ -413,10 +413,6 @@ Parking Map
 ### 📂 GitHub
 
 **[(https://github.com/SalmaNageh/-WASSA3LY-)]**
-
-### 🎥 Demo
-
-<video src="assets/Demo_Parking.mp4" controls width="800"></video>
 
 ### 📑 Presentation
 
