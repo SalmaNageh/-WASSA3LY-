@@ -385,14 +385,17 @@ streamlit run app.py
 ![Parking Monitor](screenshot-1787188566156.png)
 ![model Yolo](screenshot-1787188641534.png)
 ### 🚗 Vehicle Management
-![Vehicle Management]assets/screenshot-1787188614478.png
+### 🚗 Vehicle Management
+
+![Vehicle Management](assets/screenshot-1787188614478.png)
 
 ### 📊 Dashboard
-![Dashboard]assets/screenshot-1787189565909.png
+
+![Dashboard](assets/screenshot-1787189565909.png)
 
 ### 📜 Parking History
-![Parking History] (screenshot-1787188739615.png)
 
+![Parking History](assets/screenshot-1787188739615.png)
 > 
 
 ```text
