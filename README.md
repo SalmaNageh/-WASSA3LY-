@@ -411,7 +411,7 @@ The Streamlit application will then open in your browser.
 
 | Parking Monitor                                              | Parking Status                                              | YOLO Detection                                           |
 | ------------------------------------------------------------ | ----------------------------------------------------------- | -------------------------------------------------------- |
-| ![Parking Monitor](assets/screenshots/parking-monitor-1.png) | ![Parking Status](assets/screenshots/parking-monitor-2.png) | ![YOLO Detection](assets/screenshots/yolo-detection.png) |
+| ![Parking Monitor](assets/parking-monitor-1.png)  | ![YOLO Detection](assets/assets/parking-monitor-2.png) |
 
 ### 🚗 Vehicle Management
 
