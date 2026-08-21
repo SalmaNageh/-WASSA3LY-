@@ -441,12 +441,9 @@ The Streamlit application will then open in your browser.
 
 ### 🎥 Demo
 
-The project demo video is available in:
+The project demo video is available below:
 
-```text
-assets/demo.mp4
-```
-
+[🎥 Watch the WASSA3LY Demo](assets/Demo_Parking.mp4)
 ---
 
 ## 👥 Team
