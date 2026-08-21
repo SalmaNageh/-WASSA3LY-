@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.png" alt="WASSA3LY Logo" width="380"/>
+<img src="assets/logo.jfif" alt="WASSA3LY Logo" width="380"/>
 
 # 🚗 WASSA3LY | وسّعلي
 
