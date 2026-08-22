@@ -32,6 +32,9 @@ st.set_page_config(
 BASE_DIR = Path(__file__).resolve().parent
 logo_path = BASE_DIR / "assets" / "logo.jfif"
 
+PARKING_MODEL_PATH = BASE_DIR / "models" / "best.pt"
+PARKING_SPOTS_PATH = BASE_DIR / "config" / "parking_spots.json"
+
 if logo_path.exists():
     logo = Image.open(logo_path)
 
