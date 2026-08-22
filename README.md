@@ -416,15 +416,11 @@ The Streamlit application will then open in your browser.
 ### 🚗 Vehicle Management
 
 ![Vehicle Management](assets/vehicle-management.png)
+📊 Dashboard & Parking History
 
-### 📈 Dashboard
-
-![Dashboard](assets/dashboard.png)
-
-### 🕒 Parking History
-
-![Parking History](assets/parking-history.png)
-
+| Dashboard | Parking History |
+|---|---|
+| ![Dashboard](assets/dashboard.png) | ![Parking History](assets/parking-history.png) |
 ## 🔗 Project Links
 
 ### 📂 GitHub Repository
